@@ -439,6 +439,7 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
         as.character() %>% 
         stringr::str_split("\n<tr>", simplify = TRUE) %>% 
         t() %>% 
+        as.data.frame() %>%
         as_tibble() %>% 
         purrr::set_names("messy_data") %>% 
         filter(row_number() > 1) %>%
@@ -459,7 +460,8 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
           as.character() %>% 
           stringr::str_split("\n<tr>", simplify = TRUE) %>% 
           t() %>% 
-          as_tibble(.name_repair = NULL) %>% 
+          as.data.frame() %>%
+          as_tibble() %>% 
           purrr::set_names("messy_data") %>% 
           filter(row_number() > 1) %>%
           filter(stringr::str_detect(messy_data, "successful")) %>%
@@ -590,7 +592,8 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
         as.character() %>% 
         stringr::str_split("\n<tr>", simplify = TRUE) %>% 
         t() %>% 
-        as_tibble(.name_repair = "minimal") %>% 
+        as.data.frame() %>%
+        as_tibble() %>% 
         purrr::set_names("messy_data") %>% 
         filter(row_number() > 1) %>%
         mutate(messy_data = stringr::str_split(messy_data, "href", simplify = TRUE, n = 2)[,2]) %>% 
