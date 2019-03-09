@@ -671,11 +671,11 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
     
   }
   
-  persistently_get_box_score <- elite::persistently(.get_box_score, max_attempts = 10, wait_seconds = 0.0001)
+  insistently_get_box_score <- purrr::insistently(.get_box_score, rate = purrr::rate_delay(pause = 0.1, max_times = 10))
   
   try_get_box_score <- function(date, away_team, home_team, season, league, url, ...) {
     
-    tryCatch(persistently_get_box_score(date, away_team, home_team, season, league, url, ...), 
+    tryCatch(insistently_get_box_score(date, away_team, home_team, season, league, url, ...), 
              
              error = function(e) {
                cat("\n\n")
