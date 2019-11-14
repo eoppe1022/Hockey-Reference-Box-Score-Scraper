@@ -639,11 +639,11 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
       mutate(away_skater_ids = stringr::str_c(pull(away_skaters, player_id), collapse = "|")) %>%
       mutate(home_skater_names = stringr::str_c(pull(home_skaters, name), collapse = "|")) %>%
       mutate(home_skater_ids = stringr::str_c(pull(home_skaters, player_id), collapse = "|")) %>%
-      bind_cols(tidyr::nest(box_score_data)) %>%
-      bind_cols(tidyr::nest(penalty_data)) %>%
-      bind_cols(tidyr::nest(skaters)) %>%
-      bind_cols(tidyr::nest(goalies)) %>%
-      bind_cols(tidyr::nest(shootout_data)) %>%
+      bind_cols(tidyr::nest_legacy(box_score_data)) %>%
+      bind_cols(tidyr::nest_legacy(penalty_data)) %>%
+      bind_cols(tidyr::nest_legacy(skaters)) %>%
+      bind_cols(tidyr::nest_legacy(goalies)) %>%
+      bind_cols(tidyr::nest_legacy(shootout_data)) %>%
       rename(goals = data, penalties = data1, skaters = data2, goalies = data3, shootout = data4)
     
     if (progress) {pb$tick()}
