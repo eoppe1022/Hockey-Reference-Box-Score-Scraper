@@ -22,7 +22,7 @@ get_schedule <- function(season, ..., progress = TRUE) {
   }
   
   
-  if (any(season < 1988) | any(season > 2019) | any(season == 2005)) {
+  if (any(season < 1988) | any(season > 2020) | any(season == 2005)) {
     
     cat("\n")
     
