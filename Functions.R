@@ -28,7 +28,7 @@ get_schedule <- function(season, ..., progress = TRUE) {
     
     stop('\n\nOnly include seasons from (and including) 1988 to 2004 and
           \rfrom (and including) 2006 to whatever current season it is\n\n')
-
+    
     
   }
   
@@ -70,7 +70,7 @@ get_schedule <- function(season, ..., progress = TRUE) {
   }
   
   .get_schedule <- function(league, season, ...) {
-
+    
     seq(2.5, 3.5, by = 0.001) %>%
       sample(1) %>%
       Sys.sleep()
@@ -169,7 +169,7 @@ get_schedule <- function(season, ..., progress = TRUE) {
       mutate_at(vars(away_goals, home_goals, attendance, game_length), as.numeric) %>%
       distinct() %>%
       select(league, season, date, away_team, away_goals, home_team, home_goals, overtime, attendance, game_length, game_notes, url)
-        
+    
     if (progress) {pb$tick()}
     
     return(schedule)
@@ -274,7 +274,7 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
         mutate(shorthanded_assists = as.numeric(NA))
       
     }
-      
+    
     away_skaters <- away_skaters %>%
       as_tibble() %>%
       filter(row_number() > 1) %>%
@@ -328,7 +328,7 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
         mutate(shorthanded_assists = as.numeric(NA))
       
     }
-      
+    
     home_skaters <- home_skaters %>%
       as_tibble() %>%
       filter(row_number() > 1) %>%
@@ -429,9 +429,9 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
       goal_info <- page %>%
         rvest::html_node("#scoring") %>% 
         rvest::html_table() %>% 
-        purrr::set_names("time", "team", "messy_data") %>%
+        purrr::set_names("time", "team", "game_strength", "goal_scorer", "assists") %>%
         as_tibble() %>%
-        mutate(messy_data = stringr::str_replace_all(messy_data, "[\r\n\t]", "")) %>% 
+        mutate(assists = stringr::str_replace_all(assists, "[\r\n\t]", "")) %>% 
         filter(!stringr::str_detect(time, "Period"))
       
       scoring_ids <- page %>%
@@ -453,7 +453,7 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
         mutate_at(vars(goal_id, primary_assist_id, secondary_assist_id), ~stringr::str_split(., "\\.html", simplify = TRUE, n = 2)[,1]) %>% 
         select(goal_id, primary_assist_id, secondary_assist_id)
       
-      if (any(stringr::str_detect(pull(goal_info, messy_data), "successful attempt\\b"))) {
+      if (any(stringr::str_detect(pull(goal_info, assists), "successful attempt\\b"))) {
         
         shootout_ids <- page %>%
           rvest::html_node("#scoring") %>% 
@@ -473,11 +473,11 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
           select(shooter_id, goalie_id)
         
         shootout_data <- goal_info %>%
-          filter(stringr::str_detect(messy_data, "successful attempt\\b")) %>%
+          filter(stringr::str_detect(assists, "successful attempt\\b")) %>%
           bind_cols(shootout_ids) %>%
-          mutate(shooter = stringr::str_split(messy_data, "\\ssuccessful|\\sunsuccessful", simplify = TRUE, n = 2)[,1]) %>% 
-          mutate(goalie = stringr::str_split(messy_data, "versus\\s", simplify = TRUE, n = 2)[,2]) %>% 
-          mutate(goal = ifelse(stringr::str_detect(messy_data, "\\bsuccessful\\b"), 1, 0)) %>% 
+          mutate(shooter = stringr::str_split(assists, "\\ssuccessful|\\sunsuccessful", simplify = TRUE, n = 2)[,1]) %>% 
+          mutate(goalie = stringr::str_split(assists, "versus\\s", simplify = TRUE, n = 2)[,2]) %>% 
+          mutate(goal = ifelse(stringr::str_detect(assists, "\\bsuccessful\\b"), 1, 0)) %>% 
           mutate(season = season) %>%
           mutate(date = date) %>%
           mutate(away_team = away_team) %>%
@@ -491,20 +491,16 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
         
         box_score_data <- goal_info %>%
           filter(!stringr::str_detect(time, "Shootout")) %>%
-          filter(!stringr::str_detect(messy_data, "successful attempt\\b"))
+          filter(!stringr::str_detect(assists, "successful attempt\\b"))
         
         if (nrow(box_score_data) != 0) {
-        
+          
           box_score_data <- box_score_data %>%
             bind_cols(scoring_ids) %>%
-            mutate(game_strength = stringr::str_split(messy_data, "\U2014", simplify = TRUE, n = 2)[,1]) %>%
-            mutate(game_strength = ifelse(game_strength == messy_data, "EV", game_strength)) %>%
-            mutate(players = stringr::str_split(messy_data, "\U2014", simplify = TRUE, n = 2)[,2]) %>% 
-            mutate(players = ifelse(players == "", messy_data, players)) %>%
-            mutate(goal = stringr::str_split(players, "\\(", simplify = TRUE, n = 2)[,1]) %>%
-            mutate(primary_assist = stringr::str_split(players, "\\)", simplify = TRUE)[,2]) %>%
-            mutate(primary_assist = stringr::str_split(primary_assist, "\\sand", simplify = TRUE, n = 2)[,1]) %>%
-            mutate(secondary_assist = stringr::str_split(players, "\\sand", simplify = TRUE, n = 2)[,2]) %>%
+            mutate(game_strength = ifelse(game_strength == "", "EV", game_strength)) %>%
+            mutate(goal = stringr::str_split(goal_scorer, "\\s\\(", simplify = TRUE, n = 2)[,1]) %>%
+            mutate(primary_assist = stringr::str_split(assists, ",\\s", simplify = TRUE, n = 2)[,1]) %>%
+            mutate(secondary_assist = stringr::str_split(assists, ",\\s", simplify = TRUE, n = 2)[,2]) %>%
             mutate_all(stringr::str_squish) %>%
             mutate(season = season) %>%
             mutate(date = date) %>%
@@ -523,21 +519,17 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
           box_score_data <- tibble()
           
         }
-
+        
       }
       
       else {
         
         goal_info <- goal_info %>%
           bind_cols(scoring_ids) %>%
-          mutate(game_strength = stringr::str_split(messy_data, "\U2014", simplify = TRUE, n = 2)[,1]) %>%
-          mutate(game_strength = ifelse(game_strength == messy_data, "EV", game_strength)) %>%
-          mutate(players = stringr::str_split(messy_data, "\U2014", simplify = TRUE, n = 2)[,2]) %>% 
-          mutate(players = ifelse(players == "", messy_data, players)) %>%
-          mutate(goal = stringr::str_split(players, "\\(", simplify = TRUE, n = 2)[,1]) %>%
-          mutate(primary_assist = stringr::str_split(players, "\\)", simplify = TRUE)[,2]) %>%
-          mutate(primary_assist = stringr::str_split(primary_assist, "\\sand", simplify = TRUE, n = 2)[,1]) %>%
-          mutate(secondary_assist = stringr::str_split(players, "\\sand", simplify = TRUE, n = 2)[,2]) %>%
+          mutate(game_strength = ifelse(game_strength == "", "EV", game_strength)) %>%
+          mutate(goal = stringr::str_split(goal_scorer, "\\s\\(", simplify = TRUE, n = 2)[,1]) %>%
+          mutate(primary_assist = stringr::str_split(assists, ",\\s", simplify = TRUE, n = 2)[,1]) %>%
+          mutate(secondary_assist = stringr::str_split(assists, ",\\s", simplify = TRUE, n = 2)[,2]) %>%
           mutate_all(stringr::str_squish) %>%
           select(time, team, game_strength, goal, primary_assist, secondary_assist, goal_id, primary_assist_id, secondary_assist_id)
         
@@ -572,20 +564,19 @@ get_box_score <- function(..., progress = TRUE, combine_home_and_away = TRUE) {
       penalty_info <- page %>%
         rvest::html_node("#penalty") %>%
         rvest::html_table() %>%
-        purrr::set_names("time", "team", "messy_data") %>%
+        purrr::set_names("time", "team", "taker", "type", "mins") %>%
         as_tibble() %>%
         filter(!stringr::str_detect(time, "Period")) %>%
-        mutate(penalty_taker = ifelse(stringr::str_detect(messy_data, "\\:"), stringr::str_split(messy_data, "\\:", simplify = TRUE, n = 2)[,1], NA)) %>%
-        mutate(penalty_data = ifelse(stringr::str_detect(messy_data, "\\:"), stringr::str_split(messy_data, "\\:", simplify = TRUE, n = 2)[,2], messy_data)) %>%
-        mutate(penalty_type = stringr::str_split(penalty_data, "\U2014", simplify = TRUE, n = 2)[,1]) %>%
-        mutate(penalty_shooter = stringr::str_split(penalty_type, "penalty shot taken by", simplify = TRUE, n = 2)[,2]) %>%
-        mutate(penalty_type = stringr::str_split(penalty_type, "penalty shot taken by", simplify = TRUE, n = 2)[,1]) %>%
+        mutate(penalty_taker = ifelse(stringr::str_detect(taker, "\\:"), stringr::str_split(taker, "\\:", simplify = TRUE, n = 2)[,1], NA)) %>%
+        mutate(penalty_type = type) %>%
+        mutate(penalty_shooter = stringr::str_split(taker, "penalty shot taken by\\s", simplify = TRUE, n = 2)[,2]) %>%
+        mutate(penalty_type = stringr::str_split(taker, "penalty shot taken by\\s", simplify = TRUE, n = 2)[,1]) %>%
         mutate(penalty_shot_goal = case_when(stringr::str_detect(penalty_shooter, "GOAL") & penalty_shooter != "" ~ 1, !stringr::str_detect(penalty_shooter, "GOAL") & penalty_shooter != "" ~ 0, TRUE ~ as.numeric(NA))) %>%
         mutate(penalty_shot_miss = case_when(stringr::str_detect(penalty_shooter, "MISS") & penalty_shooter != "" ~ 1, !stringr::str_detect(penalty_shooter, "MISS") & penalty_shooter != "" ~ 0, TRUE ~ as.numeric(NA))) %>%
         mutate(penalty_shot_save = case_when(stringr::str_detect(penalty_shooter, "SAVED") & penalty_shooter != "" ~ 1, !stringr::str_detect(penalty_shooter, "SAVED") & penalty_shooter != "" ~ 0, TRUE ~ as.numeric(NA))) %>%
-        mutate(penalty_shooter = stringr::str_split(penalty_shooter, "\\-", simplify = TRUE, n = 2)[,1]) %>%
-        mutate(penalty_mins = stringr::str_split(penalty_data, "\U2014", simplify = TRUE, n = 2)[,2]) %>%
-        mutate(penalty_mins = stringr::str_replace_all(penalty_mins, c("min" = "")))
+        mutate(penalty_shooter = stringr::str_split(penalty_shooter, "\\s\\-", simplify = TRUE, n = 2)[,1]) %>%
+        mutate(penalty_mins = stringr::str_split(mins, "\U2014", simplify = TRUE, n = 2)[,2]) %>%
+        mutate(penalty_mins = stringr::str_replace_all(mins, c("\\smin" = "")))
       
       penalty_ids <- page %>%
         rvest::html_node("#penalty") %>% 
